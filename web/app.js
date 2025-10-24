@@ -74,7 +74,6 @@ const overlayOriginMeters = {
 
 const state = {
   videoFile: null,
-  videoObjectUrl: null,
   snappedFrame: null, // ImageBitmap for calibration
   offscreenCanvas: document.createElement('canvas'),
   fitTransform: { sx: 1, sy: 1, dx: 0, dy: 0 },
@@ -111,39 +110,6 @@ function resizeCanvasToDisplaySize(canvas) {
   if (canvas.width !== width || canvas.height !== height) {
     canvas.width = width;
     canvas.height = height;
-  }
-}
-
-function waitForMetadata(videoEl) {
-  if (videoEl.readyState >= 1 && videoEl.videoWidth && videoEl.videoHeight) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve, reject) => {
-    const cleanup = () => {
-      videoEl.removeEventListener('loadedmetadata', onLoaded);
-      videoEl.removeEventListener('error', onError);
-    };
-    const onLoaded = () => {
-      cleanup();
-      if (videoEl.videoWidth && videoEl.videoHeight) {
-        resolve();
-      } else {
-        reject(new Error('Video metadata missing intrinsic dimensions.'));
-      }
-    };
-    const onError = () => {
-      cleanup();
-      reject(new Error('Video metadata failed to load.'));
-    };
-    videoEl.addEventListener('loadedmetadata', onLoaded, { once: true });
-    videoEl.addEventListener('error', onError, { once: true });
-  });
-}
-
-function revokeVideoObjectUrl() {
-  if (state.videoObjectUrl) {
-    URL.revokeObjectURL(state.videoObjectUrl);
-    state.videoObjectUrl = null;
   }
 }
 
@@ -595,52 +561,28 @@ function dot(a, b) {
 }
 
 async function loadVideo(file) {
-  revokeVideoObjectUrl();
   const url = URL.createObjectURL(file);
-  state.videoObjectUrl = url;
-  state.videoFile = file;
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  video.muted = true;
   video.src = url;
-  video.load();
-  try {
-    await waitForMetadata(video);
-  } catch (err) {
-    console.error('Failed to load video metadata', err);
-    alert('Unable to load the selected video. Please verify the format is supported.');
-    playToggle.disabled = true;
-    snapFrameBtn.disabled = true;
-    state.videoFile = null;
-    return;
-  }
-  video.currentTime = 0;
-  updateTimecode();
+  state.videoFile = file;
+  await video.play().catch(() => {});
+  video.pause();
   playToggle.disabled = false;
   snapFrameBtn.disabled = false;
-  playToggle.textContent = 'Play';
   updateCalibrationButtons();
-  updateOverlay();
 }
 
 function togglePlayback() {
   if (video.paused) {
-    video.play().catch((err) => console.warn('Video play failed', err));
+    video.play();
+    playToggle.textContent = 'Pause';
   } else {
     video.pause();
+    playToggle.textContent = 'Play';
   }
 }
 
 async function grabFrame() {
-  if (!video.videoWidth) {
-    try {
-      await waitForMetadata(video);
-    } catch (err) {
-      console.error('Unable to grab frame; video metadata unavailable', err);
-      return;
-    }
-  }
+  if (!video.videoWidth) return;
   const off = state.offscreenCanvas;
   off.width = video.videoWidth;
   off.height = video.videoHeight;
@@ -1163,18 +1105,9 @@ async function sampleFrames(params) {
   const frames = [];
   if (!state.videoFile) return frames;
   const tempVideo = document.createElement('video');
-  const objectUrl = URL.createObjectURL(state.videoFile);
-  tempVideo.src = objectUrl;
+  tempVideo.src = URL.createObjectURL(state.videoFile);
   tempVideo.muted = true;
-  tempVideo.preload = 'auto';
-  tempVideo.load();
-  try {
-    await waitForMetadata(tempVideo);
-  } catch (err) {
-    console.error('Unable to sample frames; metadata load failed', err);
-    URL.revokeObjectURL(objectUrl);
-    return frames;
-  }
+  await tempVideo.play().catch(() => {});
   tempVideo.pause();
   const off = document.createElement('canvas');
   off.width = resizeW;
@@ -1191,7 +1124,6 @@ async function sampleFrames(params) {
     frames.push({ idx: i, t, dataUrl });
   }
   tempVideo.remove();
-  URL.revokeObjectURL(objectUrl);
   return frames;
 }
 
@@ -1412,7 +1344,6 @@ function setupButtons() {
   videoInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) loadVideo(file);
-    event.target.value = '';
   });
   playToggle.addEventListener('click', togglePlayback);
   snapFrameBtn.addEventListener('click', grabFrame);
@@ -1463,16 +1394,6 @@ function init() {
   calibrationCanvas.addEventListener('pointermove', handleCalibrationCanvasPointerMove);
   calibrationCanvas.addEventListener('pointerup', handleCalibrationCanvasPointerUp);
   window.addEventListener('keydown', handleKeydown);
-  video.addEventListener('loadedmetadata', () => {
-    updateTimecode();
-    updateOverlay();
-  });
-  video.addEventListener('play', () => {
-    playToggle.textContent = 'Pause';
-  });
-  video.addEventListener('pause', () => {
-    playToggle.textContent = 'Play';
-  });
   video.addEventListener('timeupdate', () => {
     updateTimecode();
     updateOverlay();
@@ -1483,7 +1404,6 @@ function init() {
     drawCourt();
     updateOverlay();
   });
-  window.addEventListener('beforeunload', revokeVideoObjectUrl);
   drawCalibration();
   drawCourt();
   updateOverlay();

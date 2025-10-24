@@ -28,7 +28,7 @@
           <button id="snap-frame" disabled>Grab Frame</button>
         </div>
         <div class="video-wrapper">
-          <video id="video" controls></video>
+          <video id="video" controls crossorigin="anonymous"></video>
           <canvas id="video-overlay"></canvas>
         </div>
         <div class="timecode">Time: <span id="timecode">0.000</span>s</div>
@@ -98,6 +98,7 @@
       </section>
     </div>
   </main>
-  <script type="module" src="app.js"></script>
+  <script src="llm_prompts.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
