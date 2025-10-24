@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
+  <defs>
+    <style>
+      .outline { fill: none; stroke: #dbe6ff; stroke-width: 6; }
+      .net { stroke: #ffb4b4; stroke-width: 6; }
+      .attack { stroke: #dbe6ff; stroke-width: 4; stroke-dasharray: 18 12; }
+      .margin { fill: #14203b; }
+      .court { fill: #1f2c4d; }
+    </style>
+  </defs>
+  <rect class="margin" x="0" y="0" width="1000" height="1000" rx="40" ry="40" />
+  <rect class="court" x="120" y="120" width="760" height="760" rx="24" ry="24" />
+  <rect class="outline" x="120" y="120" width="760" height="760" rx="24" ry="24" />
+  <line class="net" x1="120" y1="500" x2="880" y2="500" />
+  <line class="attack" x1="120" y1="380" x2="880" y2="380" />
+  <line class="attack" x1="120" y1="620" x2="880" y2="620" />
+</svg>
